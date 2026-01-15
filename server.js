@@ -1,88 +1,55 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
+'use strict';
+
+const express = require('express');
+const cors = require('cors');
 
 const app = express();
+app.set('trust proxy', 1);
 
-const PORT = Number(process.env.PORT || 3002);
-const WEB_ORIGIN = process.env.WEB_ORIGIN || "http://localhost:3000";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const PORT = process.env.PORT || 10000;
 
-const REALTIME_MODEL = process.env.REALTIME_MODEL || "gpt-realtime-mini-2025-12-15";
-  process.env.REALTIME_MODEL || "gpt-realtime-mini-2025-12-15";
-  const REALTIME_VOICE = process.env.REALTIME_VOICE || "marin";
-
-if (!OPENAI_API_KEY) {
-  console.error("Missing OPENAI_API_KEY in server/.env");
-  process.exit(1);
-}
-const HOST = "0.0.0.0";
-
-app.listen(PORT, HOST, () => {
-  console.log(`Backend listening on port ${PORT}`);
-  console.log(`Allowed origin(s): ${WEB_ORIGIN}`);
-})
-// Accept raw SDP offer text
-app.use(express.text({ type: ["application/sdp", "text/plain"] }));
-
-// Safari-safe CORS (handles preflight)
-const allowedOrigins = new Set([
-  WEB_ORIGIN,
-  "http://localhost:3000",
-  "http://127.0.0.1:3000"
+// ✅ Add your Vercel frontend here
+const ALLOWED_ORIGINS = new Set([
+  'https://myvirtualtutor-frontend.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
 ]);
 
-const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // allow curl / local tools
-    if (allowedOrigins.has(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-};
+function corsOrigin(origin, callback) {
+  // Allow curl/server-to-server (no Origin header)
+  if (!origin) return callback(null, true);
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+  if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
 
-app.get("/health", (req, res) => res.json({ ok: true }));
+  return callback(new Error(`CORS blocked for origin: ${origin}`));
+}
 
-app.post("/session", async (req, res) => {
-  try {
-    const sdpOffer = req.body;
-    if (!sdpOffer || typeof sdpOffer !== "string") {
-      return res.status(400).send("Missing SDP offer in request body.");
-    }
+app.use(cors({
+  origin: corsOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+}));
 
-    const session = {
-      type: "realtime",
-      model: REALTIME_MODEL,
-      audio: { output: { voice: REALTIME_VOICE } }
-    };
+app.options('*', cors({
+  origin: corsOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+}));
 
-    const fd = new FormData();
-    fd.set("sdp", sdpOffer);
-    fd.set("session", JSON.stringify(session));
+app.use(express.json({ limit: '1mb' }));
 
-    const r = await fetch("https://api.openai.com/v1/realtime/calls", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: fd
-    });
+app.
 
-    if (!r.ok) {
-      const errText = await r.text();
-      return res.status(r.status).send(errText);
-    }
+git add server.js
+git commit -m "Fix CORS for Vercel frontend"
+git push
 
-    const sdpAnswer = await r.text();
-    res.setHeader("Content-Type", "application/sdp");
-    return res.status(200).send(sdpAnswer);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).send("Server error creating realtime session.");
-  }
-  console.log(`Backend: http://localhost:${PORT}`);
-  console.log(`Allowed origin(s): ${Array.from(allowedOrigins).join(", ")}`);
-});
+curl -i -X OPTIONS https://myvirtualtutor-backend.onrender.com/session \
+  -H "Origin: https://myvirtualtutor-frontend.vercel.app" \
+  -H "Access-Control-Request-Method: POST"
 
+EOFD
