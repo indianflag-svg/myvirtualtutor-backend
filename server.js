@@ -6,6 +6,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 10000;
+const VERSION = "LIVE-CHECK-1";
 
 const ALLOWED_ORIGINS = new Set([
   'https://myvirtualtutor-frontend.vercel.app',
@@ -27,30 +28,31 @@ function applyCors(req, res) {
   return true;
 }
 
-// Preflight can never fail now
 app.options('*', (req, res) => {
   if (!applyCors(req, res)) {
-    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}` });
+    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}`, version: VERSION });
   }
   return res.sendStatus(204);
 });
 
 app.use((req, res, next) => {
   if (!applyCors(req, res)) {
-    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}` });
+    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}`, version: VERSION });
   }
   next();
 });
 
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/health', (req, res) => res.json({ ok: true, version: "613e38d" }));
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true, version: VERSION });
+});
 
 app.post('/session', (req, res) => {
-  res.json({ ok: true, message: 'Preflight fixed; /session reachable' });
+  res.status(200).json({ ok: true, version: VERSION });
 });
 
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
-  console.log(`Allowed origins: ${Array.from(ALLOWED_ORIGINS).join(', ')}`);
+  console.log(`Version: ${VERSION}`);
 });
