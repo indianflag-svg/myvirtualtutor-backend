@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/health', (req, res) => res.json({ ok: true, version: "613e38d" }));
 
 app.post('/session', (req, res) => {
   res.json({ ok: true, message: 'Preflight fixed; /session reachable' });
