@@ -1,58 +1,63 @@
-'use strict';
+import express from "express";
 
-const express = require('express');
 const app = express();
-
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 10000;
-const VERSION = "LIVE-CHECK-1";
+const VERSION = "esm-preflight-1";
 
 const ALLOWED_ORIGINS = new Set([
-  'https://myvirtualtutor-frontend.vercel.app',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
+  "https://myvirtualtutor-frontend.vercel.app",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
 ]);
 
 function applyCors(req, res) {
   const origin = req.headers.origin;
-  if (origin) res.setHeader('Vary', 'Origin');
+
+  if (origin) res.setHeader("Vary", "Origin");
   if (!origin) return true;
+
   if (!ALLOWED_ORIGINS.has(origin)) return false;
 
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
   return true;
 }
 
-app.options('*', (req, res) => {
+app.options("*", (req, res) => {
   if (!applyCors(req, res)) {
-    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}`, version: VERSION });
+    return res.status(403).json({
+      error: `CORS blocked for origin: ${req.headers.origin}`,
+      version: VERSION,
+    });
   }
   return res.sendStatus(204);
 });
 
 app.use((req, res, next) => {
   if (!applyCors(req, res)) {
-    return res.status(403).json({ error: `CORS blocked for origin: ${req.headers.origin}`, version: VERSION });
+    return res.status(403).json({
+      error: `CORS blocked for origin: ${req.headers.origin}`,
+      version: VERSION,
+    });
   }
   next();
 });
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: "1mb" }));
 
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({ ok: true, version: VERSION });
 });
 
-app.post('/session', (req, res) => {
+app.post("/session", (req, res) => {
   res.status(200).json({ ok: true, version: VERSION });
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend listening on port ${PORT}`);
-  console.log(`Version: ${VERSION}`);
+  console.log(`Backend listening on port ${PORT} version=${VERSION}`);
 });
