@@ -77,55 +77,57 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, service: "myvirtualtutor-backend", version: "render-check-2026-01-20-a", ts: new Date().toISOString() });
 });
 
-app.post('/session', async (req, res) => {
+app.post("/session", async (req, res) => {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Server misconfigured: OPENAI_API_KEY is not set' });
+      return res.status(500).json({ ok: false, error: "OPENAI_API_KEY is not set" });
     }
 
-    const model = process.env.REALTIME_MODEL || 'gpt-4o-realtime-preview';
+    const {
+      model = "gpt-realtime",
+      voice = "marin",
+      temperature = 0.7,
+      modalities = undefined, // e.g. ["text"] for text-only
+    } = req.body || {};
 
-    const { instructions, voice, temperature } = req.body || {};
-    const payload = {
-      model,
-      instructions: typeof instructions === 'string'
-        ? instructions
-        : 'You are a helpful math tutor for grades 3–8. Teach step-by-step without giving away answers immediately.',
-      voice: typeof voice === 'string' ? voice : 'alloy',
-      temperature: typeof temperature === 'number' ? temperature : 0.7,
+    const sessionConfig = {
+      session: {
+        type: "realtime",
+        model: typeof model === "string" ? model : "gpt-realtime",
+        temperature: typeof temperature === "number" ? temperature : 0.7,
+        ...(Array.isArray(modalities) ? { modalities } : {}),
+        audio: {
+          output: { voice: typeof voice === "string" ? voice : "marin" },
+        },
+      },
     };
 
-    if (!global.fetch) {
-      return res.status(500).json({
-        error: 'Global fetch not available in this Node runtime on Render. Set Render Node version to 18+ (recommended 20).',
-      });
-    }
-
-    const r = await fetch('https://api.openai.com/v1/realtime/sessions', {
-      method: 'POST',
+    const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(sessionConfig),
     });
 
-    const text = await r.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = { raw: text }; }
+    const data = await r.json().catch(() => null);
 
     if (!r.ok) {
-      console.error('OpenAI /v1/realtime/sessions error:', r.status, data);
-      return res.status(r.status).json({ error: 'Failed to create realtime session', details: data });
+      return res.status(r.status).json({
+        ok: false,
+        error: "Failed to mint realtime client secret",
+        details: data,
+      });
     }
 
     return res.status(200).json(data);
   } catch (err) {
-    console.error('POST /session failed:', err);
-    return res.status(500).json({ error: String(err?.message || err) });
+    return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
 });
+
 
 // Render verification route
 app.get("/whoami", (req, res) => {
