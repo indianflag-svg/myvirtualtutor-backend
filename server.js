@@ -142,3 +142,9 @@ app.listen(PORT, () => {
   console.log('Allowed origins:', Array.from(ALLOWED_ORIGINS).join(', '));
 });
 // Render verification route
+
+// WHOAMI MARKER: whoami-2026-01-20-b
+app.get("/whoami", (req, res) => {
+  res.json({ ok: true, marker: "whoami-2026-01-20-b" });
+});
+
