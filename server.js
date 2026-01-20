@@ -127,16 +127,18 @@ app.post('/session', async (req, res) => {
   }
 });
 
+// Render verification route
+app.get("/whoami", (req, res) => {
+  res.json({
+    ok: true,
+    repo: "indianflag777/myvirtualtutor-backend",
+    file: "server.js",
+    marker: "whoami-2026-01-20-a"
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log('Allowed origins:', Array.from(ALLOWED_ORIGINS).join(', '));
 });
 // Render verification route
-// Render verification route
-app.get("/whoami", ...);
-
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-  console.log('Allowed origins:', Array.from(ALLOWED_ORIGINS).join(', '));
-});
-
