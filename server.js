@@ -87,7 +87,6 @@ app.post("/session", async (req, res) => {
     const {
       model = "gpt-realtime",
       voice = "marin",
-      temperature = 0.7,
       modalities = undefined, // e.g. ["text"] for text-only
     } = req.body || {};
 
@@ -95,7 +94,6 @@ app.post("/session", async (req, res) => {
       session: {
         type: "realtime",
         model: typeof model === "string" ? model : "gpt-realtime",
-        temperature: typeof temperature === "number" ? temperature : 0.7,
         ...(Array.isArray(modalities) ? { modalities } : {}),
         audio: {
           output: { voice: typeof voice === "string" ? voice : "marin" },
