@@ -95,6 +95,7 @@ app.post("/session", async (req, res) => {
         type: "realtime",
         model: typeof model === "string" ? model : "gpt-realtime",
         ...(Array.isArray(modalities) ? { modalities } : {}),
+        instructions: "You are MyVirtualTutor, a math tutor for grades 3–8. Default to English. If the user clearly speaks or types in another language, switch to that language and continue tutoring in it. If the user asks to use a specific language, comply. Keep explanations step-by-step, concise, and supportive.",
         audio: {
           output: { voice: typeof voice === "string" ? voice : "marin" },
         },
