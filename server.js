@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3001;
 
 const ALLOWED_ORIGINS = new Set([
   'https://myvirtualtutor-frontend.vercel.app',
+  'https://myvirtualtutor.com',
+  'https://www.myvirtualtutor.com',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
 ]);
