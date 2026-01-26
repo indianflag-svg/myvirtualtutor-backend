@@ -1,8 +1,16 @@
+import "dotenv/config";
 'use strict';
 
 import express from "express";
+import { fetch } from "undici";
+import { FormData } from "formdata-node";
+import { FormDataEncoder } from "form-data-encoder";
+import { Readable } from "node:stream";
+
 
 const app = express();
+app.use(express.text({ type: ["application/sdp", "text/plain"] }));
+app.use(express.json());
 app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3001;
@@ -67,7 +75,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '1mb' }));
 
 app.use((req, res, next) => {
   const origin = req.headers.origin || '';
@@ -97,7 +104,7 @@ app.post("/session", async (req, res) => {
         type: "realtime",
         model: typeof model === "string" ? model : "gpt-realtime",
         ...(Array.isArray(modalities) ? { modalities } : {}),
-        instructions: "You are MyVirtualTutor, a math tutor for grades 3–8. Default to English. If the user clearly speaks or types in another language, switch to that language and continue tutoring in it. If the user asks to use a specific language, comply. Keep explanations step-by-step, concise, and supportive.",
+        instructions: "You are MyVirtualTutor, a professional math tutor for grades 3–8. Always respond in English. Keep explanations step-by-step, concise, and supportive.",
         audio: {
           output: { voice: typeof voice === "string" ? voice : "marin" },
         },
@@ -151,3 +158,61 @@ app.get("/whoami", (req, res) => {
   res.json({ ok: true, marker: "whoami-2026-01-20-b" });
 });
 
+
+
+// --- WebRTC SDP answer (server-side call to OpenAI) ---
+// Frontend sends: { sdp: "<offer_sdp_string>" }
+// Backend returns: { ok: true, answer_sdp: "<answer_sdp_string>" }
+app.post("/webrtc/answer", async (req, res) => {
+  try {
+    // Accept either raw SDP (recommended) or JSON { sdp: "..." }
+    const offerSdp =
+      typeof req.body === "string" ? req.body : (req.body?.sdp ?? "");
+
+    if (!offerSdp || typeof offerSdp !== "string") {
+      return res.status(400).json({ ok: false, error: "Missing SDP offer string" });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ ok: false, error: "OPENAI_API_KEY is not set" });
+    }
+
+    // Deterministic multipart encoding for Node
+    const sessionConfig = {
+      type: "realtime",
+      model: "gpt-realtime",
+      // Force English output for both voice + chat
+      instructions: "You are MyVirtualTutor, a professional math tutor for grades 3–8. Always respond in English.",
+      // Optional: pick a consistent English voice
+      audio: { output: { voice: "marin" } },
+    };
+
+    const fd = new FormData();
+    fd.set("sdp", offerSdp);
+    fd.set("session", JSON.stringify(sessionConfig));
+
+    const encoder = new FormDataEncoder(fd);
+
+    const r = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+    duplex: "half",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        ...encoder.headers,
+      },
+      body: Readable.from(encoder.encode()),
+    });
+
+    const text = await r.text();
+
+    if (!r.ok) {
+      return res.status(r.status).send(text || `HTTP ${r.status}`);
+    }
+
+    // Return SDP answer as plain text (best for WebRTC setRemoteDescription)
+    res.setHeader("Content-Type", "application/sdp");
+    return res.status(200).send(text);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
