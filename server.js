@@ -1,6 +1,7 @@
 import "dotenv/config";
 'use strict';
 
+import rateLimit from "express-rate-limit";
 import express from "express";
 import { fetch } from "undici";
 import { FormData } from "formdata-node";
@@ -12,6 +13,31 @@ const app = express();
 app.use(express.text({ type: ["application/sdp", "text/plain"] }));
 app.use(express.json());
 app.set('trust proxy', 1);
+
+// --- Health check (for Render / monitoring) ---
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "myvirtualtutor-backend",
+    ts: new Date().toISOString(),
+  });
+});
+
+// --- Rate limiting (protect OpenAI + prevent abuse) ---
+// trust proxy is enabled above for correct IP handling behind Render/Cloudflare.
+const sessionLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 12,             // 12 requests/min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const webrtcLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 6,              // 6 requests/min per IP (SDP calls are expensive)
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const PORT = process.env.PORT || 3001;
 
@@ -86,7 +112,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, service: "myvirtualtutor-backend", version: "render-check-2026-01-20-a", ts: new Date().toISOString() });
 });
 
-app.post("/session", async (req, res) => {
+app.post("/session", sessionLimiter, async (req, res) => {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -163,7 +189,7 @@ app.get("/whoami", (req, res) => {
 // --- WebRTC SDP answer (server-side call to OpenAI) ---
 // Frontend sends: { sdp: "<offer_sdp_string>" }
 // Backend returns: { ok: true, answer_sdp: "<answer_sdp_string>" }
-app.post("/webrtc/answer", async (req, res) => {
+app.post("/webrtc/answer", webrtcLimiter, async (req, res) => {
   try {
     // Accept either raw SDP (recommended) or JSON { sdp: "..." }
     const offerSdp =
