@@ -1,4 +1,8 @@
-'use strict';
+/* server.render.cjs
+   Render/CommonJS entrypoint
+   - POST /session        -> mints realtime client secret (JSON)
+   - POST /webrtc/answer  -> exchanges WebRTC SDP offer for SDP answer (application/sdp)
+*/
 
 require("dotenv").config();
 
@@ -7,131 +11,131 @@ const cors = require("cors");
 
 const app = express();
 
+// ---------- Config ----------
 const PORT = Number(process.env.PORT || 10000);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// Comma-separated list, e.g. "https://www.myvirtualtutor.com,https://myvirtualtutor.com"
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
-  .split(",")
-  .map(s => s.trim())
-  .filter(Boolean);
+if (!OPENAI_API_KEY) {
+  console.error("Missing OPENAI_API_KEY in environment");
+  process.exit(1);
+}
 
-const allowedSet = new Set(ALLOWED_ORIGINS);
+// allow both apex + www + (optional) vercel preview
+const ALLOWED_ORIGINS = new Set([
+  "https://myvirtualtutor.com",
+  "https://www.myvirtualtutor.com",
+  "https://myvirtualtutor-frontend.vercel.app",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
 
-// Parse JSON for /session (client_secrets endpoint)
-app.use(express.json({ limit: "1mb" }));
+function isAllowedVercelSubdomain(origin) {
+  try {
+    const u = new URL(origin);
+    return (
+      u.protocol === "https:" &&
+      u.hostname.endsWith(".vercel.app") &&
+      (u.hostname === "myvirtualtutor-frontend.vercel.app" ||
+        u.hostname.startsWith("myvirtualtutor-frontend-"))
+    );
+  } catch {
+    return false;
+  }
+}
 
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // allow curl/server-to-server
-    if (allowedSet.has(origin)) return cb(null, true);
-    return cb(null, false); // deny without throwing
-  },
-  credentials: true,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+function originAllowed(origin) {
+  return ALLOWED_ORIGINS.has(origin) || isAllowedVercelSubdomain(origin);
+}
 
+// ---------- CORS ----------
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (originAllowed(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.options("*", cors());
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// ---------- Body parsing ----------
+app.use(express.json({ limit: "1mb" }));
 
-// Mint a Realtime client secret for the browser (matches your working server.js logic)
+// ---------- Debug log ----------
+app.use((req, res, next) => {
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.path} CT=${req.headers["content-type"] || ""}`
+  );
+  next();
+});
+
+// ---------- Routes ----------
+app.get("/health", (req, res) => res.json({ ok: true }));
+
 app.post("/session", async (req, res) => {
   try {
-    if (!OPENAI_API_KEY) {
-      return res.status(500).json({ ok: false, error: "OPENAI_API_KEY is not set" });
-    }
-
-    const {
-      model = "gpt-realtime",
-      voice = "marin",
-      modalities = undefined, // e.g. ["text"] for text-only
-    } = req.body || {};
-
-    const sessionConfig = {
-      session: {
-        type: "realtime",
-        model: typeof model === "string" ? model : "gpt-realtime",
-        ...(Array.isArray(modalities) ? { modalities } : {}),
-        instructions:
-          "You are MyVirtualTutor, a professional math tutor for grades 3–8. Always respond in English. Keep explanations step-by-step, concise, and supportive.",
-        audio: {
-          output: { voice: typeof voice === "string" ? voice : "marin" },
-        },
-      },
-    };
-
     const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(sessionConfig),
+      body: JSON.stringify({
+        session: {
+          type: "realtime",
+          model: "gpt-realtime",
+          instructions:
+            "You are MyVirtualTutor, a professional math tutor for grades 3–8.",
+          audio: { output: { voice: "marin" } },
+        },
+      }),
     });
 
-    const data = await r.json().catch(() => null);
-
-    if (!r.ok) {
-      return res.status(r.status).json({
-        ok: false,
-        error: "Failed to mint realtime client secret",
-        details: data,
-      });
-    }
-
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: String(err?.message || err) });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
   }
 });
-// WebRTC SDP answer (server-side call to OpenAI)
-// Frontend sends raw SDP offer as request body (Content-Type: application/sdp)
+
 app.post(
   "/webrtc/answer",
-  express.text({ type: ["application/sdp", "text/plain"], limit: "5mb" }),
+  express.text({ type: ["application/sdp", "text/plain"], limit: "2mb" }),
   async (req, res) => {
-    try {
-      const offerSdp = (typeof req.body === "string" ? req.body : "").trim();
-      if (!offerSdp.startsWith("v=")) {
-        return res.status(400).type("text/plain").send("Missing/invalid SDP offer");
-      }
+    const offer = req.body || "";
+    console.log("[SDP] length:", offer.length);
 
-      if (!OPENAI_API_KEY) {
-        return res.status(500).type("text/plain").send("OPENAI_API_KEY is not set");
-      }
-
-      const fd = new FormData();
-      fd.set("sdp", offerSdp);
-      fd.set(
-        "session",
-        JSON.stringify({
-          type: "realtime",
-          model: "gpt-4o-realtime-preview",
-          instructions: "You are MyVirtualTutor. Respond in plain text.",
-          audio: { output: { voice: "marin" } },
-        })
-      );
-
-      const r = await fetch("https://api.openai.com/v1/realtime/calls", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-        body: fd,
-      });
-
-      const text = await r.text();
-      if (!r.ok) return res.status(r.status).type("text/plain").send(text);
-
-      res.setHeader("Content-Type", "application/sdp");
-      return res.status(200).send(text);
-    } catch (err) {
-      return res.status(500).type("text/plain").send(String(err?.message || err));
+    if (!offer.includes("v=0")) {
+      return res.status(400).send("Missing/invalid SDP offer");
     }
+
+    const fd = new FormData();
+    fd.set("sdp", offer);
+    fd.set(
+      "session",
+      JSON.stringify({
+        type: "realtime",
+        model: "gpt-realtime",
+        audio: { output: { voice: "marin" } },
+      })
+    );
+
+    const r = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: fd,
+    });
+
+    if (!r.ok) return res.status(r.status).send(await r.text());
+    res.type("application/sdp").send(await r.text());
   }
 );
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Backend listening on port ${PORT}`);
-  console.log(`Allowed origin(s): ${Array.from(allowedSet).join(", ")}`);
-});
+app.listen(PORT, "0.0.0.0", () =>
+  console.log("Server listening on", PORT)
+);
