@@ -86,6 +86,50 @@ app.post("/session", async (req, res) => {
     return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
 });
+// WebRTC SDP answer (server-side call to OpenAI)
+// Frontend sends raw SDP offer as request body (Content-Type: application/sdp)
+app.post(
+  "/webrtc/answer",
+  express.text({ type: ["application/sdp", "text/plain"], limit: "5mb" }),
+  async (req, res) => {
+    try {
+      const offerSdp = (typeof req.body === "string" ? req.body : "").trim();
+      if (!offerSdp.startsWith("v=")) {
+        return res.status(400).type("text/plain").send("Missing/invalid SDP offer");
+      }
+
+      if (!OPENAI_API_KEY) {
+        return res.status(500).type("text/plain").send("OPENAI_API_KEY is not set");
+      }
+
+      const fd = new FormData();
+      fd.set("sdp", offerSdp);
+      fd.set(
+        "session",
+        JSON.stringify({
+          type: "realtime",
+          model: "gpt-4o-realtime-preview",
+          instructions: "You are MyVirtualTutor. Respond in plain text.",
+          audio: { output: { voice: "marin" } },
+        })
+      );
+
+      const r = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: fd,
+      });
+
+      const text = await r.text();
+      if (!r.ok) return res.status(r.status).type("text/plain").send(text);
+
+      res.setHeader("Content-Type", "application/sdp");
+      return res.status(200).send(text);
+    } catch (err) {
+      return res.status(500).type("text/plain").send(String(err?.message || err));
+    }
+  }
+);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Backend listening on port ${PORT}`);
