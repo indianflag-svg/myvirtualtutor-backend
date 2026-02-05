@@ -3,3 +3,6 @@ node_modules
 .env.local
 .env.production
 
+
+# local uploads
+uploads/
