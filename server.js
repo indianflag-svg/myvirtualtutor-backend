@@ -242,3 +242,39 @@ app.post("/webrtc/answer", webrtcLimiter, async (req, res) => {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// -----------------------------
+// Whiteboard ops (temporary hardcoded test)
+// -----------------------------
+app.get("/whiteboard/ops", (req, res) => {
+  res.json({
+    type: "whiteboard.ops",
+    version: 1,
+    ops: [
+      {
+        op: "add",
+        kind: "text",
+        props: {
+          x: 160,
+          y: 120,
+          text: "Backend → Whiteboard ✅",
+          color: "#60a5fa",
+          fontSize: 34,
+          fontWeight: 800
+        }
+      },
+      {
+        op: "add",
+        kind: "text",
+        props: {
+          x: 160,
+          y: 170,
+          text: "Next: LLM generates ops",
+          color: "#e6eaf2",
+          fontSize: 24,
+          fontWeight: 600
+        }
+      }
+    ]
+  });
+});
