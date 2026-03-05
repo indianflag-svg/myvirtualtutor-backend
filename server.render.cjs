@@ -1,9 +1,3 @@
-/* server.render.cjs
-   Render/CommonJS entrypoint
-   - POST /session        -> mints realtime client secret (JSON)
-   - POST /webrtc/answer  -> exchanges WebRTC SDP offer for SDP answer (application/sdp)
-*/
-
 require("dotenv").config();
 
 const express = require("express");
@@ -20,7 +14,7 @@ if (!OPENAI_API_KEY) {
   process.exit(1);
 }
 
-// allow both apex + www + (optional) vercel preview
+// ---------- Allowed Origins ----------
 const ALLOWED_ORIGINS = new Set([
   "https://myvirtualtutor.com",
   "https://www.myvirtualtutor.com",
@@ -60,12 +54,13 @@ app.use(
     credentials: true,
   })
 );
+
 app.options("*", cors());
 
-// ---------- Body parsing ----------
+// ---------- Body Parsing ----------
 app.use(express.json({ limit: "1mb" }));
 
-// ---------- Debug log ----------
+// ---------- Debug Logging ----------
 app.use((req, res, next) => {
   console.log(
     `[${new Date().toISOString()}] ${req.method} ${req.path} CT=${req.headers["content-type"] || ""}`
@@ -73,9 +68,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------- Routes ----------
-app.get("/health", (req, res) => res.json({ ok: true }));
+// ---------- Health ----------
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
 
+// ---------- Session Endpoint ----------
 app.post("/session", async (req, res) => {
   try {
     const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
@@ -89,53 +87,69 @@ app.post("/session", async (req, res) => {
           type: "realtime",
           model: "gpt-realtime",
           instructions:
-            "You are MyVirtualTutor, a professional math tutor for grades 3-8.",
-          audio: { output: { voice: "marin" } },
+            "You are MyVirtualTutor, a professional math tutor for students in grades 3 to 8. Teach step by step and guide the student to understand the problem.",
+          audio: {
+            output: { voice: "marin" },
+          },
         },
       }),
     });
 
     const data = await r.json();
-    if (!r.ok) return res.status(r.status).json(data);
+
+    if (!r.ok) {
+      return res.status(r.status).json(data);
+    }
+
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
 });
 
+// ---------- WebRTC Answer ----------
 app.post(
   "/webrtc/answer",
   express.text({ type: ["application/sdp", "text/plain"], limit: "2mb" }),
   async (req, res) => {
     const offer = req.body || "";
-    console.log("[SDP] length:", offer.length);
 
     if (!offer.includes("v=0")) {
-      return res.status(400).send("Missing/invalid SDP offer");
+      return res.status(400).send("Invalid SDP offer");
     }
 
     const fd = new FormData();
+
     fd.set("sdp", offer);
+
     fd.set(
       "session",
       JSON.stringify({
         type: "realtime",
         model: "gpt-realtime",
-        audio: { output: { voice: "marin" } },
+        audio: {
+          output: { voice: "marin" },
+        },
       })
     );
 
     const r = await fetch("https://api.openai.com/v1/realtime/calls", {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
       body: fd,
     });
 
-    if (!r.ok) return res.status(r.status).send(await r.text());
+    if (!r.ok) {
+      return res.status(r.status).send(await r.text());
+    }
+
     res.type("application/sdp").send(await r.text());
   }
 );
 
-app.listen(PORT, "0.0.0.0", () =>
-  console.log("Server listening on", PORT)
-);
+// ---------- Start Server ----------
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server listening on", PORT);
+});
