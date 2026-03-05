@@ -89,7 +89,7 @@ app.post("/session", async (req, res) => {
           type: "realtime",
           model: "gpt-realtime",
           instructions:
-            "You are MyVirtualTutor, a professional math tutor for grades 3–8.",
+            "You are MyVirtualTutor, a professional math tutor for grades 3-8.",
           audio: { output: { voice: "marin" } },
         },
       }),
