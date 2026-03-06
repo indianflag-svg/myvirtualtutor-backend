@@ -23,35 +23,19 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:3000",
 ]);
 
-function isAllowedVercelSubdomain(origin) {
-  try {
-    const u = new URL(origin);
-    return (
-      u.protocol === "https:" &&
-      u.hostname.endsWith(".vercel.app") &&
-      (u.hostname === "myvirtualtutor-frontend.vercel.app" ||
-        u.hostname.startsWith("myvirtualtutor-frontend-"))
-    );
-  } catch {
-    return false;
-  }
-}
-
 function originAllowed(origin) {
-  return ALLOWED_ORIGINS.has(origin) || isAllowedVercelSubdomain(origin);
+  return !origin || ALLOWED_ORIGINS.has(origin);
 }
 
 // ---------- CORS ----------
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
       if (originAllowed(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
+      return cb(new Error("CORS blocked"));
     },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
@@ -59,14 +43,6 @@ app.options("*", cors());
 
 // ---------- Body Parsing ----------
 app.use(express.json({ limit: "1mb" }));
-
-// ---------- Debug Logging ----------
-app.use((req, res, next) => {
-  console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.path} CT=${req.headers["content-type"] || ""}`
-  );
-  next();
-});
 
 // ---------- Health ----------
 app.get("/health", (req, res) => {
@@ -79,8 +55,8 @@ app.post("/session", async (req, res) => {
     const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        Authorization: "Bearer " + OPENAI_API_KEY,
+        "Content-Type": "application/json; charset=utf-8"
       },
       body: JSON.stringify({
         session: {
@@ -89,10 +65,10 @@ app.post("/session", async (req, res) => {
           instructions:
             "You are MyVirtualTutor, a professional math tutor for students in grades 3 to 8. Teach step by step and guide the student to understand the problem.",
           audio: {
-            output: { voice: "marin" },
-          },
-        },
-      }),
+            output: { voice: "marin" }
+          }
+        }
+      })
     });
 
     const data = await r.json();
@@ -102,6 +78,7 @@ app.post("/session", async (req, res) => {
     }
 
     res.json(data);
+
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
@@ -128,17 +105,17 @@ app.post(
         type: "realtime",
         model: "gpt-realtime",
         audio: {
-          output: { voice: "marin" },
-        },
+          output: { voice: "marin" }
+        }
       })
     );
 
     const r = await fetch("https://api.openai.com/v1/realtime/calls", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: "Bearer " + OPENAI_API_KEY
       },
-      body: fd,
+      body: fd
     });
 
     if (!r.ok) {
