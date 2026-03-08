@@ -14,53 +14,45 @@ if (!OPENAI_API_KEY) {
 }
 
 app.use(cors());
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
-function asciiSafe(str) {
-  return str.replace(/[^\x00-\x7F]/g, "");
-}
-
 app.post("/session", async (req, res) => {
   try {
-
-    const instructions = asciiSafe(
-      "You are MyVirtualTutor, a math tutor that teaches step by step."
+    const response = await fetch(
+      "https://api.openai.com/v1/realtime/client_secrets",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + OPENAI_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          session: {
+            type: "realtime",
+            model: "gpt-realtime",
+            instructions:
+              "You are MyVirtualTutor, a math tutor that teaches step by step.",
+            audio: {
+              output: { voice: "marin" },
+            },
+          },
+        }),
+      }
     );
 
-    const body = {
-      session: {
-        type: "realtime",
-        model: "gpt-realtime",
-        instructions: instructions,
-        audio: {
-          output: { voice: "marin" }
-        }
-      }
-    };
+    const data = await response.json();
 
-    const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + OPENAI_API_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    });
-
-    const data = await r.json();
-
-    if (!r.ok) {
-      return res.status(r.status).json(data);
+    if (!response.ok) {
+      return res.status(response.status).json(data);
     }
 
     res.json(data);
-
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
   }
 });
 
