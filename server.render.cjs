@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
@@ -22,35 +23,30 @@ app.post("/session", async (req, res) => {
         type: "realtime",
         model: "gpt-realtime",
         instructions: "You are MyVirtualTutor. Teach math step by step.",
-        audio: { output: { voice: "marin" } }
+        audio: {
+          output: {
+            voice: "marin"
+          }
+        }
       }
     };
 
-    const json = JSON.stringify(body);
-
-    // DEBUG: print every character code so we can see if 8217 appears
-    const codes = [...json].map(c => c.charCodeAt(0));
-    console.log("JSON body:", json);
-    console.log("Char codes:", codes);
-
-    const response = await fetch(
+    const response = await axios.post(
       "https://api.openai.com/v1/realtime/client_secrets",
+      body,
       {
-        method: "POST",
         headers: {
-          "Authorization": "Bearer " + OPENAI_API_KEY,
+          Authorization: "Bearer " + OPENAI_API_KEY,
           "Content-Type": "application/json"
-        },
-        body: json
+        }
       }
     );
 
-    const data = await response.text();
-    res.send(data);
+    res.json(response.data);
 
   } catch (err) {
-    console.error("ERROR:", err);
-    res.status(500).json({ error: String(err) });
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data || err.message });
   }
 });
 
