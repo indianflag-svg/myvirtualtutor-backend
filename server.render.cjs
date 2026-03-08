@@ -20,24 +20,35 @@ app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
+function asciiSafe(str) {
+  return str.replace(/[^\x00-\x7F]/g, "");
+}
+
 app.post("/session", async (req, res) => {
   try {
+
+    const instructions = asciiSafe(
+      "You are MyVirtualTutor, a math tutor that teaches step by step."
+    );
+
+    const body = {
+      session: {
+        type: "realtime",
+        model: "gpt-realtime",
+        instructions: instructions,
+        audio: {
+          output: { voice: "marin" }
+        }
+      }
+    };
+
     const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + OPENAI_API_KEY,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        session: {
-          type: "realtime",
-          model: "gpt-realtime",
-          instructions: "You are MyVirtualTutor, a math tutor that teaches step by step.",
-          audio: {
-            output: { voice: "marin" }
-          }
-        }
-      })
+      body: JSON.stringify(body)
     });
 
     const data = await r.json();
