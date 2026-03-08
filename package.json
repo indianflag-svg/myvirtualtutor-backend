@@ -16,6 +16,7 @@
     "formdata-node": "^6.0.3",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "openai": "^6.27.0",
     "undici": "^7.19.0"
   }
 }
