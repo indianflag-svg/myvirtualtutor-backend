@@ -20,27 +20,33 @@ app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
+function toASCII(str) {
+  return Buffer.from(str, "ascii").toString("ascii");
+}
+
 app.post("/session", async (req, res) => {
   try {
+
+    const body = {
+      session: {
+        type: "realtime",
+        model: "gpt-realtime",
+        instructions: toASCII("You are MyVirtualTutor, a math tutor that teaches step by step."),
+        audio: {
+          output: { voice: "marin" }
+        }
+      }
+    };
+
     const response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
       {
         method: "POST",
         headers: {
           Authorization: "Bearer " + OPENAI_API_KEY,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          session: {
-            type: "realtime",
-            model: "gpt-realtime",
-            instructions:
-              "You are MyVirtualTutor, a math tutor that teaches step by step.",
-            audio: {
-              output: { voice: "marin" },
-            },
-          },
-        }),
+        body: JSON.stringify(body)
       }
     );
 
@@ -51,6 +57,7 @@ app.post("/session", async (req, res) => {
     }
 
     res.json(data);
+
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
