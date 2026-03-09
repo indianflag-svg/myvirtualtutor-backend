@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import algebra from "algebra.js";
 
 const app = express();
 
@@ -19,42 +20,32 @@ app.get("/", (req, res) => {
   res.send("MyVirtualTutor backend running");
 });
 
-function solveSimpleMath(input) {
+function solveMath(input) {
 
-  const clean = input.replace(/\s+/g, "");
+  try {
 
-  // simple addition
-  const add = clean.match(/^(\d+)\+(\d+)$/);
-  if (add) {
-    const a = Number(add[1]);
-    const b = Number(add[2]);
-    return `${a} + ${b} = ${a + b}`;
-  }
+    // simple arithmetic
+    if (/^[0-9+\-*/().\s]+$/.test(input)) {
+      const result = eval(input);
+      return `${input} = ${result}`;
+    }
 
-  // subtraction
-  const sub = clean.match(/^(\d+)-(\d+)$/);
-  if (sub) {
-    const a = Number(sub[1]);
-    const b = Number(sub[2]);
-    return `${a} - ${b} = ${a - b}`;
-  }
+    // simple linear equation like 2x+3=7
+    if (input.includes("=") && input.includes("x")) {
 
-  // multiplication
-  const mul = clean.match(/^(\d+)\*(\d+)$/);
-  if (mul) {
-    const a = Number(mul[1]);
-    const b = Number(mul[2]);
-    return `${a} × ${b} = ${a * b}`;
-  }
+      const parts = input.split("=");
 
-  // division
-  const div = clean.match(/^(\d+)\/(\d+)$/);
-  if (div) {
-    const a = Number(div[1]);
-    const b = Number(div[2]);
-    if (b === 0) return "Division by zero is not allowed.";
-    return `${a} ÷ ${b} = ${a / b}`;
-  }
+      const left = algebra.parse(parts[0]);
+      const right = algebra.parse(parts[1]);
+
+      const equation = new algebra.Equation(left, right);
+      const answer = equation.solveFor("x");
+
+      return `Solution:\n\n${input}\n\nx = ${answer}`;
+
+    }
+
+  } catch (e) {}
 
   return null;
 }
@@ -67,30 +58,18 @@ app.post("/chat", async (req, res) => {
     return res.json({ ok: false, error: "No message provided" });
   }
 
-  const simple = solveSimpleMath(message);
+  const mathResult = solveMath(message);
 
-  if (simple) {
+  if (mathResult) {
     return res.json({
       ok: true,
-      reply: simple
+      reply: mathResult
     });
   }
 
-  const reply =
-`Step 1: Understand the problem
-
-${message}
-
-Step 2: Break it into smaller steps.
-
-Step 3: Solve each part carefully.
-
-Final answer:
-Let's work through it together.`;
-
-  res.json({
+  return res.json({
     ok: true,
-    reply
+    reply: `Let's think through this step by step.\n\nQuestion: ${message}`
   });
 
 });
