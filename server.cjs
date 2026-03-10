@@ -8,12 +8,14 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
-/* allow all origins so browser requests work */
+/* FULL CORS FIX */
 app.use((req,res,next)=>{
-  res.setHeader("Access-Control-Allow-Origin","*")
-  res.setHeader("Access-Control-Allow-Methods","GET,POST,OPTIONS")
-  res.setHeader("Access-Control-Allow-Headers","Content-Type")
-  if(req.method==="OPTIONS") return res.sendStatus(204)
+  res.header("Access-Control-Allow-Origin","*")
+  res.header("Access-Control-Allow-Methods","GET,POST,OPTIONS")
+  res.header("Access-Control-Allow-Headers","Content-Type")
+  if(req.method==="OPTIONS"){
+    return res.status(200).end()
+  }
   next()
 })
 
