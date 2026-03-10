@@ -8,11 +8,11 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
-/* allow all origins */
+/* allow all origins so browser requests work */
 app.use((req,res,next)=>{
   res.setHeader("Access-Control-Allow-Origin","*")
   res.setHeader("Access-Control-Allow-Methods","GET,POST,OPTIONS")
-  res.setHeader("Access-Control-Allow-Headers","Content-Type,Authorization")
+  res.setHeader("Access-Control-Allow-Headers","Content-Type")
   if(req.method==="OPTIONS") return res.sendStatus(204)
   next()
 })
@@ -27,7 +27,6 @@ const limiter = rateLimit({
 })
 
 app.post("/chat",limiter,async(req,res)=>{
-
   try{
 
     const apiKey = process.env.OPENAI_API_KEY
@@ -43,7 +42,7 @@ app.post("/chat",limiter,async(req,res)=>{
         input:[
           {
             role:"system",
-            content:"You are a math tutor. Explain answers step-by-step."
+            content:"You are a math tutor for grades 6-12. Explain answers step-by-step."
           },
           {
             role:"user",
@@ -57,7 +56,7 @@ app.post("/chat",limiter,async(req,res)=>{
 
     const text =
       data.output?.[0]?.content?.[0]?.text ||
-      "No response"
+      "I couldn't generate a response."
 
     res.json({
       ok:true,
@@ -72,9 +71,8 @@ app.post("/chat",limiter,async(req,res)=>{
     })
 
   }
-
 })
 
 app.listen(PORT,()=>{
-  console.log("Server running on",PORT)
+  console.log("Server running on port",PORT)
 })
