@@ -25,7 +25,7 @@ app.post("/chat", (req, res) => {
     });
   }
 
-  const text = message.toLowerCase().trim();
+  const text = String(message).toLowerCase().trim();
 
   if (text === "hi" || text === "hello") {
     return res.json({
@@ -50,5 +50,5 @@ app.post("/chat", (req, res) => {
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, () => {
-  console.log(\`Server listening on \${PORT}\`);
+  console.log(`Server listening on ${PORT}`);
 });
