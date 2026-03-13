@@ -20,7 +20,7 @@ app.get("/", (req,res)=>{
   res.send("MyVirtualTutor backend running")
 })
 
-app.post("/chat",(req,res)=>{
+app.post("/chat", async (req,res)=>{
 
   const message = req.body.message
 
@@ -31,26 +31,39 @@ app.post("/chat",(req,res)=>{
     })
   }
 
-  const text = String(message).toLowerCase().trim()
+  try{
 
-  if(text==="hi" || text==="hello"){
-    return res.json({
-      ok:true,
-      reply:"Hi! I'm your math tutor. What problem would you like help with?"
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a friendly math tutor for grades 3-8. Explain step-by-step so the student learns."
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ]
     })
-  }
 
-  if(text==="2+2" || text==="2 + 2"){
-    return res.json({
+    const reply = completion.choices[0].message.content
+
+    res.json({
       ok:true,
-      reply:"2 + 2 = 4"
+      reply
     })
-  }
 
-  return res.json({
-    ok:true,
-    reply:"Let's solve that together. What math problem are you working on?"
-  })
+  }catch(error){
+
+    console.error(error)
+
+    res.json({
+      ok:false,
+      reply:"The tutor had trouble answering that. Please try again."
+    })
+
+  }
 
 })
 
