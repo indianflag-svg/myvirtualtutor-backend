@@ -1,8 +1,10 @@
 import express from "express"
 import cors from "cors"
+import multer from "multer"
 import OpenAI from "openai"
 
 const app = express()
+const upload = multer({ storage: multer.memoryStorage() })
 
 app.use(cors({
   origin: "*",
@@ -20,6 +22,8 @@ app.get("/", (req,res)=>{
   res.send("MyVirtualTutor backend running")
 })
 
+/* CHAT STEP SOLVER */
+
 app.post("/chat", async (req,res)=>{
 
   const message = req.body.message
@@ -34,11 +38,11 @@ app.post("/chat", async (req,res)=>{
   try{
 
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+      model:"gpt-4o-mini",
+      messages:[
         {
-          role: "system",
-          content: `
+          role:"system",
+          content:`
 You are MyVirtualTutor, a math tutor for grades 3–8.
 
 Solve problems step-by-step.
@@ -52,17 +56,11 @@ Return ONLY JSON in this format:
   "step 3"
  ]
 }
-
-Rules:
-• No paragraphs
-• No explanations outside the steps
-• Each step must be short
-• Final step must contain the answer
 `
         },
         {
-          role: "user",
-          content: message
+          role:"user",
+          content:message
         }
       ]
     })
@@ -78,10 +76,7 @@ Rules:
       steps = [raw]
     }
 
-    res.json({
-      ok:true,
-      steps
-    })
+    res.json({ ok:true, steps })
 
   }catch(error){
 
@@ -89,7 +84,87 @@ Rules:
 
     res.json({
       ok:false,
-      steps:["The tutor had trouble solving that."]
+      steps:["Tutor had trouble solving that."]
+    })
+
+  }
+
+})
+
+/* PHOTO SOLVER */
+
+app.post("/solve-photo", upload.single("image"), async (req,res)=>{
+
+  if(!req.file){
+    return res.json({
+      ok:false,
+      steps:["No image uploaded."]
+    })
+  }
+
+  try{
+
+    const base64 = req.file.buffer.toString("base64")
+
+    const completion = await client.chat.completions.create({
+      model:"gpt-4o-mini",
+      messages:[
+        {
+          role:"system",
+          content:`
+You are a math tutor. Look at the uploaded image of a math problem.
+
+Identify the problem and solve it step-by-step.
+
+Return ONLY JSON:
+
+{
+ "steps":[
+  "step 1",
+  "step 2",
+  "step 3"
+ ]
+}
+`
+        },
+        {
+          role:"user",
+          content:[
+            {
+              type:"text",
+              text:"Solve the math problem in this image step-by-step."
+            },
+            {
+              type:"image_url",
+              image_url:{
+                url:`data:image/png;base64,${base64}`
+              }
+            }
+          ]
+        }
+      ]
+    })
+
+    const raw = completion.choices[0].message.content
+
+    let steps
+
+    try{
+      const parsed = JSON.parse(raw)
+      steps = parsed.steps
+    }catch{
+      steps = [raw]
+    }
+
+    res.json({ ok:true, steps })
+
+  }catch(error){
+
+    console.error(error)
+
+    res.json({
+      ok:false,
+      steps:["Tutor could not read the image."]
     })
 
   }
