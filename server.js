@@ -27,7 +27,7 @@ app.post("/chat", async (req,res)=>{
   if(!message){
     return res.json({
       ok:true,
-      reply:"Please ask a math question."
+      steps:["Please ask a math question."]
     })
   }
 
@@ -39,27 +39,25 @@ app.post("/chat", async (req,res)=>{
         {
           role: "system",
           content: `
-You are MyVirtualTutor, a calm and patient math tutor for students in grades 3–8.
+You are MyVirtualTutor, a math tutor for grades 3–8.
 
-Your teaching style:
-• Guide the student step-by-step.
-• Do NOT immediately give the final answer.
-• Ask the student questions to help them think.
-• Encourage the student.
-• Keep explanations simple and clear.
+Solve problems step-by-step.
 
-Teaching format:
-1. Restate the problem
-2. Ask the student what they think the first step is
-3. Guide them step-by-step
-4. Only reveal the answer after explanation
-5. Always encourage the student
+Return ONLY JSON in this format:
 
-Example tone:
-"Great question! Let's work through this together."
+{
+ "steps":[
+  "step 1",
+  "step 2",
+  "step 3"
+ ]
+}
 
-Never say you are an AI.
-Always behave like a real tutor.
+Rules:
+• No paragraphs
+• No explanations outside the steps
+• Each step must be short
+• Final step must contain the answer
 `
         },
         {
@@ -69,11 +67,20 @@ Always behave like a real tutor.
       ]
     })
 
-    const reply = completion.choices[0].message.content
+    const raw = completion.choices[0].message.content
+
+    let steps
+
+    try{
+      const parsed = JSON.parse(raw)
+      steps = parsed.steps
+    }catch{
+      steps = [raw]
+    }
 
     res.json({
       ok:true,
-      reply
+      steps
     })
 
   }catch(error){
@@ -82,7 +89,7 @@ Always behave like a real tutor.
 
     res.json({
       ok:false,
-      reply:"The tutor had trouble answering that. Please try again."
+      steps:["The tutor had trouble solving that."]
     })
 
   }
