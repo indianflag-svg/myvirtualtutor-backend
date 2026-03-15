@@ -45,7 +45,7 @@ app.post("/chat", async (req,res)=>{
           content:`
 You are MyVirtualTutor, a math tutor for grades 3–8.
 
-Solve problems step-by-step.
+Solve problems step-by-step using short math expressions like: 12 ÷ 3, = 4. Avoid sentences.
 
 Return ONLY JSON in this format:
 
