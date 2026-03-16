@@ -22,7 +22,7 @@ app.get("/", (req,res)=>{
   res.send("MyVirtualTutor backend running")
 })
 
-/* CHAT STEP SOLVER */
+/* CHAT SOLVER */
 
 app.post("/chat", async (req,res)=>{
 
@@ -45,23 +45,40 @@ app.post("/chat", async (req,res)=>{
           content:`
 You are MyVirtualTutor, a math tutor for grades 3–8.
 
-Solve problems step-by-step using short math expressions.
+Solve math problems using WHITEBOARD STYLE steps.
 
-Return ONLY JSON in this format:
+Supported topics:
+- arithmetic
+- fractions
+- decimals
+- basic algebra equations
+
+Return ONLY JSON:
 
 {
-  "steps":[
-    "12 ÷ 3",
-    "= 4"
-  ]
+ "steps":[
+  "step1",
+  "step2"
+ ]
 }
 
 Rules:
-- Use math-style steps only
+- Use short math expressions
 - No sentences
 - No explanations
-- No words like "Step 1"
-- Final line should be the final math result
+- No words like "Step"
+- Show algebra isolation steps when solving equations
+
+Example algebra:
+
+2x + 4 = 10
+2x = 6
+x = 3
+
+Example arithmetic:
+
+12 ÷ 3
+= 4
 `
         },
         {
@@ -120,31 +137,34 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
           content:`
 You are a math tutor reading a worksheet image.
 
-Find all math problems in the image. If there is more than one problem, the FIRST step must be "Problem 1", the next "Problem 2", etc. Then show math steps below each problem using whiteboard style math only.
+Detect math problems and solve them using WHITEBOARD STYLE steps.
 
-Return ONLY JSON in this format:
+Topics supported:
+- arithmetic
+- fractions
+- decimals
+- algebra equations
+
+Return ONLY JSON:
 
 {
-  "steps":[
-    "12 ÷ 3",
-    "= 4"
-  ]
+ "steps":[
+  "step1",
+  "step2"
+ ]
 }
 
 Rules:
-- Output only short math-style lines
+- If multiple problems exist label them "Problem 1", "Problem 2"
+- Use short math expressions only
 - No sentences
-- No explanations
-- No narration
-- No labels like "Step 1"
-- Prefer expressions like:
-  "4 × 16 × 3"
-  "= 64 × 3"
-  "= 192"
-- If there are multiple problems, solve them in order and separate them with a short title line like:
-  "Problem 1"
-  "Problem 2"
-- Keep every line short and whiteboard-friendly
+- Show algebra solving steps
+
+Example algebra:
+
+2x + 4 = 10
+2x = 6
+x = 3
 `
         },
         {
@@ -152,7 +172,7 @@ Rules:
           content:[
             {
               type:"text",
-              text:"Read the worksheet image and return clean whiteboard-style math steps only."
+              text:"Solve the math problems in this worksheet image."
             },
             {
               type:"image_url",
