@@ -76,7 +76,7 @@ app.post("/chat", async (req,res)=>{
       return res.json({
         ok:true,
         steps:[
-          "2x = 6",
+          "Correct.","2x = 6",
           "What number should we divide by?"
         ]
       })
@@ -106,7 +106,7 @@ app.post("/chat", async (req,res)=>{
       return res.json({
         ok:true,
         steps:[
-          "x = 3"
+          "Correct.","x = 3"
         ]
       })
 
