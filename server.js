@@ -120,7 +120,7 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
           content:`
 You are a math tutor reading a worksheet image.
 
-Find all math problems in the image. If there are multiple, label them "Problem 1", "Problem 2", etc. Solve each separately using whiteboard-style math steps.
+Find all math problems in the image. If there is more than one problem, the FIRST step must be "Problem 1", the next "Problem 2", etc. Then show math steps below each problem using whiteboard style math only.
 
 Return ONLY JSON in this format:
 
