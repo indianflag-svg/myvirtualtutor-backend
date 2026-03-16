@@ -171,7 +171,7 @@ Return JSON:
             {
               type:"image_url",
               image_url:{
-                url:\`data:image/png;base64,\${base64}\`
+                url: `data:image/png;base64,${base64}`
               }
             }
           ]
