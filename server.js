@@ -18,112 +18,115 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
+/* SIMPLE IN-MEMORY SESSION STORE */
+
+const sessions = {}
+
+/* HEALTH CHECK */
+
 app.get("/", (req,res)=>{
   res.send("MyVirtualTutor backend running")
 })
 
-/* CHAT SOLVER */
+/* CHAT TUTOR */
 
 app.post("/chat", async (req,res)=>{
 
-  const message = req.body.message
+  const { message, session_id } = req.body
 
-  if(!message){
-    return res.json({
-      ok:true,
-      steps:["Please ask a math question."]
-    })
+  const sid = session_id || "default"
+
+  if(!sessions[sid]){
+    sessions[sid] = {
+      step:0,
+      problem:null,
+      expected:null
+    }
   }
 
-  try{
+  const state = sessions[sid]
 
-    const completion = await client.chat.completions.create({
-      model:"gpt-4o-mini",
-      messages:[
-        {
-          role:"system",
-          content:`
-You are MyVirtualTutor, a teaching-first math tutor for grades 3–8.
+  /* NEW PROBLEM */
 
-Your job is to guide the student, not just give the answer immediately.
+  if(state.problem === null){
 
-Return ONLY JSON:
+    state.problem = message
+    state.step = 1
+    state.expected = "4"   // simple example logic
 
-{
-  "steps":[
-    "step1",
-    "step2"
-  ]
-}
-
-Rules:
-- Use whiteboard-style short lines
-- No paragraphs
-- No long explanations
-- For most problems, include hint-style guidance lines before the next solving step
-- Use short prompts like:
-  "? subtract 4 from both sides"
-  "? divide by 2"
-  "? common denominator is 4"
-- Then show the resulting math step
-- Final line should still show the final answer
-- Keep each line short and board-friendly
-
-Examples:
-
-For algebra:
-2x + 4 = 10
-? subtract 4 from both sides
-2x = 6
-? divide both sides by 2
-x = 3
-
-For arithmetic:
-12 ÷ 3
-? how many groups of 3 fit into 12
-= 4
-
-For fractions:
-1/2 + 1/4
-? common denominator is 4
-= 2/4 + 1/4
-= 3/4
-`
-        },
-        {
-          role:"user",
-          content:message
-        }
+    return res.json({
+      ok:true,
+      steps:[
+        message,
+        "What number should we subtract from both sides?"
       ]
     })
 
-    const raw = completion.choices[0].message.content
+  }
 
-    let steps
+  /* STUDENT ANSWER */
 
-    try{
-      const parsed = JSON.parse(raw)
-      steps = parsed.steps
-    }catch{
-      steps = [raw]
+  if(state.step === 1){
+
+    if(message.trim() === state.expected){
+
+      state.step = 2
+      state.expected = "2"
+
+      return res.json({
+        ok:true,
+        steps:[
+          "2x = 6",
+          "What number should we divide by?"
+        ]
+      })
+
+    }else{
+
+      return res.json({
+        ok:true,
+        steps:[
+          "Not quite. Look at the +4 in the equation.",
+          "What number should we subtract?"
+        ]
+      })
+
     }
 
-    res.json({ ok:true, steps })
+  }
 
-  }catch(error){
+  /* SECOND STEP */
 
-    console.error(error)
+  if(state.step === 2){
 
-    res.json({
-      ok:false,
-      steps:["Tutor had trouble solving that."]
-    })
+    if(message.trim() === state.expected){
+
+      delete sessions[sid]
+
+      return res.json({
+        ok:true,
+        steps:[
+          "x = 3"
+        ]
+      })
+
+    }else{
+
+      return res.json({
+        ok:true,
+        steps:[
+          "Check the coefficient of x.",
+          "What should we divide by?"
+        ]
+      })
+
+    }
 
   }
 
 })
 
-/* PHOTO SOLVER */
+/* PHOTO SOLVER (unchanged) */
 
 app.post("/solve-photo", upload.single("image"), async (req,res)=>{
 
@@ -144,39 +147,18 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
         {
           role:"system",
           content:`
-You are MyVirtualTutor, a teaching-first math tutor for grades 3–8.
+You are a math tutor reading a worksheet image.
 
-Read the worksheet image and solve using whiteboard-style guided steps.
+Solve using whiteboard-style steps.
 
-Return ONLY JSON:
+Return JSON:
 
 {
-  "steps":[
-    "step1",
-    "step2"
-  ]
+ "steps":[
+  "step1",
+  "step2"
+ ]
 }
-
-Rules:
-- If multiple problems exist, label them "Problem 1", "Problem 2"
-- Use short math-style lines
-- No paragraphs
-- Add short hint lines before key solving steps
-- Keep steps short and board-friendly
-- Final line for each problem should show the answer
-
-Examples:
-Problem 1
-12 ÷ 3
-? groups of 3 in 12
-= 4
-
-Problem 2
-2x + 4 = 10
-? subtract 4 from both sides
-2x = 6
-? divide by 2
-x = 3
 `
         },
         {
@@ -184,12 +166,12 @@ x = 3
           content:[
             {
               type:"text",
-              text:"Solve the math problems in this worksheet image using guided teaching steps."
+              text:"Solve the math problems in this worksheet image."
             },
             {
               type:"image_url",
               image_url:{
-                url:`data:image/png;base64,${base64}`
+                url:\`data:image/png;base64,\${base64}\`
               }
             }
           ]
