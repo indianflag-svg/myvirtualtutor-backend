@@ -18,118 +18,149 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
-/* SIMPLE IN-MEMORY SESSION STORE */
-
 const sessions = {}
-
-/* HEALTH CHECK */
 
 app.get("/", (req,res)=>{
   res.send("MyVirtualTutor backend running")
 })
 
-/* CHAT TUTOR */
-
 app.post("/chat", async (req,res)=>{
-
   const { message, session_id } = req.body
-
   const sid = session_id || "default"
 
   if(!sessions[sid]){
     sessions[sid] = {
-      step:0,
-      problem:null,
-      expected:null
+      mode: null,
+      step: 0,
+      problem: null
     }
   }
 
   const state = sessions[sid]
+  const input = String(message || "").trim()
 
-  /* NEW PROBLEM */
+  if(!state.problem){
+    if(input === "2x + 4 = 10"){
+      state.mode = "interactive_algebra"
+      state.problem = input
+      state.step = 1
 
-  if(state.problem === null){
+      return res.json({
+        ok: true,
+        steps: [
+          "2x + 4 = 10",
+          "What number should we subtract from both sides?"
+        ]
+      })
+    }
 
-    state.problem = message
-    state.step = 1
-    state.expected = "4"   // simple example logic
+    try{
+      const completion = await client.chat.completions.create({
+        model:"gpt-4o-mini",
+        messages:[
+          {
+            role:"system",
+            content:`
+You are MyVirtualTutor, a teaching-first math tutor for grades 3–8.
+
+Return ONLY JSON:
+
+{
+  "steps":[
+    "step1",
+    "step2"
+  ]
+}
+
+Rules:
+- Use whiteboard-style short lines
+- No paragraphs
+- No long explanations
+- Include the original problem as the first line
+- Then show guided solving lines
+- Final line should show the answer
+`
+          },
+          {
+            role:"user",
+            content:input
+          }
+        ]
+      })
+
+      const raw = completion.choices[0].message.content
+      let steps
+
+      try{
+        const parsed = JSON.parse(raw)
+        steps = parsed.steps
+      }catch{
+        steps = [raw]
+      }
+
+      return res.json({ ok:true, steps })
+    }catch(error){
+      console.error(error)
+      return res.json({
+        ok:false,
+        steps:["Tutor had trouble solving that."]
+      })
+    }
+  }
+
+  if(state.mode === "interactive_algebra" && state.step === 1){
+    if(input === "4"){
+      state.step = 2
+      return res.json({
+        ok:true,
+        steps:[
+          "2x = 6",
+          "Correct.",
+          "What number should we divide by?"
+        ]
+      })
+    }
 
     return res.json({
       ok:true,
       steps:[
-        message,
-        "What number should we subtract from both sides?"
+        "2x + 4 = 10",
+        "Not quite. Look at the +4 in the equation.",
+        "What number should we subtract?"
       ]
     })
-
   }
 
-  /* STUDENT ANSWER */
-
-  if(state.step === 1){
-
-    if(message.trim() === state.expected){
-
-      state.step = 2
-      state.expected = "2"
-
-      return res.json({
-        ok:true,
-        steps:[
-          "Correct.","2x = 6",
-          "What number should we divide by?"
-        ]
-      })
-
-    }else{
-
-      return res.json({
-        ok:true,
-        steps:[
-          "Not quite. Look at the +4 in the equation.",
-          "What number should we subtract?"
-        ]
-      })
-
-    }
-
-  }
-
-  /* SECOND STEP */
-
-  if(state.step === 2){
-
-    if(message.trim() === state.expected){
-
+  if(state.mode === "interactive_algebra" && state.step === 2){
+    if(input === "2"){
       delete sessions[sid]
-
       return res.json({
         ok:true,
         steps:[
-          "Correct.","x = 3"
+          "x = 3",
+          "Correct."
         ]
       })
-
-    }else{
-
-      return res.json({
-        ok:true,
-        steps:[
-          "Check the coefficient of x.",
-          "What should we divide by?"
-        ]
-      })
-
     }
 
+    return res.json({
+      ok:true,
+      steps:[
+        "2x = 6",
+        "Not quite. Check the coefficient of x.",
+        "What should we divide by?"
+      ]
+    })
   }
 
+  delete sessions[sid]
+  return res.json({
+    ok:true,
+    steps:["Let's start a new problem."]
+  })
 })
 
-/* PHOTO SOLVER (unchanged) */
-
 app.post("/solve-photo", upload.single("image"), async (req,res)=>{
-
   if(!req.file){
     return res.json({
       ok:false,
@@ -138,7 +169,6 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
   }
 
   try{
-
     const base64 = req.file.buffer.toString("base64")
 
     const completion = await client.chat.completions.create({
@@ -149,16 +179,20 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
           content:`
 You are a math tutor reading a worksheet image.
 
-Solve using whiteboard-style steps.
-
-Return JSON:
+Return ONLY JSON in this format:
 
 {
- "steps":[
-  "step1",
-  "step2"
- ]
+  "steps":[
+    "step1",
+    "step2"
+  ]
 }
+
+Rules:
+- If multiple problems exist, label them Problem 1, Problem 2
+- Use short whiteboard-style math lines
+- No paragraphs
+- No narration
 `
         },
         {
@@ -180,7 +214,6 @@ Return JSON:
     })
 
     const raw = completion.choices[0].message.content
-
     let steps
 
     try{
@@ -191,18 +224,13 @@ Return JSON:
     }
 
     res.json({ ok:true, steps })
-
   }catch(error){
-
     console.error(error)
-
     res.json({
       ok:false,
       steps:["Tutor could not read the image."]
     })
-
   }
-
 })
 
 const PORT = process.env.PORT || 10000
