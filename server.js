@@ -45,17 +45,23 @@ app.post("/chat", async (req,res)=>{
           content:`
 You are MyVirtualTutor, a math tutor for grades 3–8.
 
-Solve problems step-by-step using short math expressions like: 12 ÷ 3, = 4. Avoid sentences.
+Solve problems step-by-step using short math expressions.
 
 Return ONLY JSON in this format:
 
 {
- "steps":[
-  "step 1",
-  "step 2",
-  "step 3"
- ]
+  "steps":[
+    "12 ÷ 3",
+    "= 4"
+  ]
 }
+
+Rules:
+- Use math-style steps only
+- No sentences
+- No explanations
+- No words like "Step 1"
+- Final line should be the final math result
 `
         },
         {
@@ -112,19 +118,33 @@ app.post("/solve-photo", upload.single("image"), async (req,res)=>{
         {
           role:"system",
           content:`
-You are a math tutor. Look at the uploaded image of a math problem.
+You are a math tutor reading a worksheet image.
 
-Identify the problem and solve it step-by-step.
+Find the math problem(s) in the image and solve them using WHITEBOARD STYLE MATH ONLY.
 
-Return ONLY JSON:
+Return ONLY JSON in this format:
 
 {
- "steps":[
-  "step 1",
-  "step 2",
-  "step 3"
- ]
+  "steps":[
+    "12 ÷ 3",
+    "= 4"
+  ]
 }
+
+Rules:
+- Output only short math-style lines
+- No sentences
+- No explanations
+- No narration
+- No labels like "Step 1"
+- Prefer expressions like:
+  "4 × 16 × 3"
+  "= 64 × 3"
+  "= 192"
+- If there are multiple problems, solve them in order and separate them with a short title line like:
+  "Problem 1"
+  "Problem 2"
+- Keep every line short and whiteboard-friendly
 `
         },
         {
@@ -132,7 +152,7 @@ Return ONLY JSON:
           content:[
             {
               type:"text",
-              text:"Solve the math problem in this image step-by-step."
+              text:"Read the worksheet image and return clean whiteboard-style math steps only."
             },
             {
               type:"image_url",
