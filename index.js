@@ -12,46 +12,44 @@ app.post("/chat", async (req, res) => {
   const userMessage = req.body.message
 
   try {
-    const prompt = `
-You are a friendly and patient math tutor.
-
-Teach step-by-step using long division.
-
-IMPORTANT:
-- Be slightly conversational (like a tutor talking)
-- Add small guiding phrases like "Let’s start by..." or "Now we..."
-- Keep steps clear and simple
-- Do NOT skip steps
-
-FORMAT:
-
-Let’s solve this step by step.
-
-Step 1: Explain what we look at  
-Step 2: Divide  
-Step 3: Multiply  
-Step 4: Subtract  
-Step 5: Bring down  
-Step 6: Continue  
-
-Final Answer: ___
-
-Now solve:
-${userMessage}
-`
-
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": \`Bearer \${process.env.OPENAI_API_KEY}\`
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        temperature: 0.4,
+        temperature: 0.2,
         messages: [
-          { role: "system", content: "You are a helpful tutor." },
-          { role: "user", content: prompt }
+          {
+            role: "system",
+            content: `
+You are a strict math tutor.
+
+You MUST ALWAYS:
+- Solve using step-by-step long division
+- NEVER jump to the answer
+- NEVER skip steps
+- ALWAYS follow this format EXACTLY:
+
+Let’s solve this step by step.
+
+Step 1: ...
+Step 2: ...
+Step 3: ...
+Step 4: ...
+Step 5: ...
+
+Final Answer: ___
+
+If you do not follow this format, the answer is WRONG.
+`
+          },
+          {
+            role: "user",
+            content: userMessage
+          }
         ]
       })
     })
@@ -72,5 +70,5 @@ app.get("/", (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(\`Server running on port \${PORT}\`)
+  console.log(`Server running on port ${PORT}`)
 })
