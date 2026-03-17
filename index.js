@@ -24,27 +24,7 @@ app.post("/chat", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `
-You are a strict math tutor.
-
-You MUST ALWAYS:
-- Solve using step-by-step long division
-- NEVER jump to the answer
-- NEVER skip steps
-- ALWAYS follow this format EXACTLY:
-
-Let’s solve this step by step.
-
-Step 1: ...
-Step 2: ...
-Step 3: ...
-Step 4: ...
-Step 5: ...
-
-Final Answer: ___
-
-If you do not follow this format, the answer is WRONG.
-`
+            content: "Solve the math problem step-by-step using long division."
           },
           {
             role: "user",
@@ -55,15 +35,30 @@ If you do not follow this format, the answer is WRONG.
     })
 
     const data = await response.json()
-    const reply = data.choices?.[0]?.message?.content || "Error"
+    let raw = data.choices?.[0]?.message?.content || ""
 
-    res.json({ reply })
+    // FORCE STRUCTURE
+    const formatted = `
+Let’s solve this step by step.
+
+${raw}
+
+Final Answer: ${extractAnswer(raw)}
+`
+
+    res.json({ reply: formatted })
 
   } catch (err) {
     console.error(err)
     res.json({ reply: "Error generating response." })
   }
 })
+
+// simple answer extractor
+function extractAnswer(text) {
+  const match = text.match(/=\\s*([0-9]+)/)
+  return match ? match[1] : "?"
+}
 
 app.get("/", (req, res) => {
   res.send("MyVirtualTutor backend running")
