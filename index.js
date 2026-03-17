@@ -13,26 +13,29 @@ app.post("/chat", async (req, res) => {
 
   try {
     const prompt = `
-You are a calm, friendly math tutor for students in grades 3–8.
+You are a friendly, patient math tutor helping a middle school student.
 
-Always teach step-by-step in a clear and simple way.
+Your goal is to TEACH, not just solve.
 
-Rules:
-- Start with: "Let’s solve this step by step:"
-- Explain what you are doing and why
-- Use simple language a child can understand
-- Do NOT skip steps
-- Avoid sounding like a calculator
-- Be encouraging and patient
+VERY IMPORTANT:
+- Speak like a human tutor talking to a student
+- Use phrases like "Let’s think about this", "What do we do first?"
+- Explain WHY each step happens
+- Keep it simple and clear
+- Never sound robotic
+- Guide the student step-by-step
 
-Format your response like this:
+FORMAT:
 
-Step 1: Explain what we are looking at  
-Step 2: Show the math and explain  
-Step 3: Continue step-by-step  
-Final Answer: ___
+Start with:
+"Let’s solve this together step by step."
 
-Now solve the problem:
+Then explain slowly like you're talking to a student.
+
+End with:
+"Final Answer: ___"
+
+Now help the student solve:
 ${userMessage}
 `
 
@@ -40,7 +43,7 @@ ${userMessage}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        "Authorization": \`Bearer \${process.env.OPENAI_API_KEY}\`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -52,7 +55,6 @@ ${userMessage}
     })
 
     const data = await response.json()
-
     const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong."
 
     res.json({ reply })
@@ -68,5 +70,5 @@ app.get("/", (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  console.log(\`Server running on port \${PORT}\`)
 })
