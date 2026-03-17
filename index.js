@@ -13,29 +13,31 @@ app.post("/chat", async (req, res) => {
 
   try {
     const prompt = `
-You are a friendly, patient math tutor helping a middle school student.
+You are a friendly math tutor helping a student.
 
-Your goal is to TEACH, not just solve.
-
-VERY IMPORTANT:
-- Speak like a human tutor talking to a student
-- Use phrases like "Let’s think about this", "What do we do first?"
+IMPORTANT RULES:
+- Always solve division problems using LONG DIVISION (not listing multiples)
+- Teach step-by-step like a real tutor
+- Speak clearly and simply
 - Explain WHY each step happens
-- Keep it simple and clear
-- Never sound robotic
-- Guide the student step-by-step
+- Be conversational, not robotic
 
 FORMAT:
 
 Start with:
-"Let’s solve this together step by step."
+"Let’s solve this step by step using long division."
 
-Then explain slowly like you're talking to a student.
+Then explain each step clearly:
+- What number we look at
+- How many times it goes in
+- Multiply
+- Subtract
+- Bring down
 
 End with:
 "Final Answer: ___"
 
-Now help the student solve:
+Now solve:
 ${userMessage}
 `
 
@@ -55,7 +57,7 @@ ${userMessage}
     })
 
     const data = await response.json()
-    const reply = data.choices?.[0]?.message?.content || "Sorry, something went wrong."
+    const reply = data.choices?.[0]?.message?.content || "Error"
 
     res.json({ reply })
 
