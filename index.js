@@ -13,31 +13,32 @@ app.post("/chat", async (req, res) => {
 
   try {
     const prompt = `
-You are a friendly math tutor helping a student.
+You are a math tutor for a middle school student.
 
-IMPORTANT RULES:
-- Always solve division problems using LONG DIVISION (not listing multiples)
-- Teach step-by-step like a real tutor
-- Speak clearly and simply
-- Explain WHY each step happens
-- Be conversational, not robotic
+You MUST follow this EXACT structure. Do NOT skip steps.
 
-FORMAT:
+Solve using LONG DIVISION ONLY.
 
-Start with:
-"Let’s solve this step by step using long division."
+RESPONSE FORMAT (follow exactly):
 
-Then explain each step clearly:
-- What number we look at
-- How many times it goes in
-- Multiply
-- Subtract
-- Bring down
+Let’s solve this step by step using long division.
 
-End with:
-"Final Answer: ___"
+Step 1: Look at the first part of the number and explain what we are doing  
+Step 2: Divide and explain how many times it goes in  
+Step 3: Multiply and show the result  
+Step 4: Subtract and explain  
+Step 5: Bring down the next number  
+Step 6: Repeat until done  
 
-Now solve:
+Final Answer: ___
+
+IMPORTANT:
+- Do NOT jump to the answer
+- Do NOT list multiples
+- Do NOT shorten the explanation
+- Always explain like teaching a beginner
+
+Problem:
 ${userMessage}
 `
 
@@ -49,8 +50,9 @@ ${userMessage}
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
+        temperature: 0.3,
         messages: [
-          { role: "system", content: "You are a helpful math tutor." },
+          { role: "system", content: "You are a strict math tutor that always follows instructions." },
           { role: "user", content: prompt }
         ]
       })
