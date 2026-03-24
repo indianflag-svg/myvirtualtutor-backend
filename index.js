@@ -24,7 +24,7 @@ app.post("/chat", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: "Solve the math problem step-by-step using long division."
+            content: "You are a math tutor. Solve step-by-step clearly."
           },
           {
             role: "user",
@@ -35,30 +35,19 @@ app.post("/chat", async (req, res) => {
     })
 
     const data = await response.json()
-    let raw = data.choices?.[0]?.message?.content || ""
 
-    // FORCE STRUCTURE
-    const formatted = `
-Let’s solve this step by step.
+    let reply = data.choices?.[0]?.message?.content || "Error"
 
-${raw}
+    // ADD HUMAN FEEL
+    reply += "\n\nDoes that make sense, or do you want me to explain any step?"
 
-Final Answer: ${extractAnswer(raw)}
-`
-
-    res.json({ reply: formatted })
+    res.json({ reply })
 
   } catch (err) {
     console.error(err)
     res.json({ reply: "Error generating response." })
   }
 })
-
-// simple answer extractor
-function extractAnswer(text) {
-  const match = text.match(/=\\s*([0-9]+)/)
-  return match ? match[1] : "?"
-}
 
 app.get("/", (req, res) => {
   res.send("MyVirtualTutor backend running")
