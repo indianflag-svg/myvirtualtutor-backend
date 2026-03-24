@@ -22,30 +22,27 @@ app.post("/chat", async (req, res) => {
         model: "gpt-4o",
         temperature: 0.2,
         messages: [
-          {
-            role: "system",
-            content: "You are a math tutor. Solve step-by-step clearly."
-          },
-          {
-            role: "user",
-            content: userMessage
-          }
+          { role: "system", content: "You are a helpful math tutor. Solve step-by-step clearly." },
+          { role: "user", content: userMessage }
         ]
       })
     })
 
     const data = await response.json()
 
-    let reply = data.choices?.[0]?.message?.content || "Error"
+    if (!data.choices) {
+      return res.json({ reply: "Tutor had trouble solving that." })
+    }
 
-    // ADD HUMAN FEEL
+    let reply = data.choices[0].message.content
+
     reply += "\n\nDoes that make sense, or do you want me to explain any step?"
 
     res.json({ reply })
 
   } catch (err) {
     console.error(err)
-    res.json({ reply: "Error generating response." })
+    res.json({ reply: "Tutor had trouble solving that." })
   }
 })
 
