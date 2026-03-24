@@ -12,7 +12,7 @@ app.post("/chat", async (req, res) => {
   const userMessage = req.body.message
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -20,21 +20,13 @@ app.post("/chat", async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: "You are a helpful math tutor. Solve step-by-step clearly." },
-          { role: "user", content: userMessage }
-        ]
+        input: `Solve this step by step and explain clearly:\n${userMessage}`
       })
     })
 
     const data = await response.json()
 
-    if (!data.choices) {
-      return res.json({ reply: "Tutor had trouble solving that." })
-    }
-
-    let reply = data.choices[0].message.content
+    let reply = data.output?.[0]?.content?.[0]?.text || "Tutor had trouble solving that."
 
     reply += "\n\nDoes that make sense, or do you want me to explain any step?"
 
