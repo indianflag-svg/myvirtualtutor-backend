@@ -1,108 +1,52 @@
-require("dotenv").config();
+const express = require("express")
+const cors = require("cors")
+const fetch = require("node-fetch")
 
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
+const app = express()
+app.use(cors())
+app.use(express.json())
 
-const app = express();
-const PORT = Number(process.env.PORT || 10000);
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-app.use(cors());
-app.use(express.json());
-
-/* ---------- HEALTH ---------- */
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
-});
-
-/* ---------- CHAT (used by frontend) ---------- */
+const PORT = process.env.PORT || 8000
 
 app.post("/chat", async (req, res) => {
+  const userMessage = req.body.message
+
   try {
-
-    const message = req.body.message || "";
-
-    const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are MyVirtualTutor, a professional math tutor. Teach step-by-step clearly like a human tutor."
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ]
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
-      {
-        headers: {
-          Authorization: "Bearer " + OPENAI_API_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+      body: JSON.stringify({
+        model: "gpt-4o",
+        input: `Solve step-by-step and explain clearly:\n${userMessage}`
+      })
+    })
 
-    const reply = response.data.choices[0].message.content;
+    const data = await response.json()
 
-    res.json({ reply });
+    if (data.error) {
+      console.error("OPENAI ERROR:", data.error)
+      return res.json({ reply: "Error: " + data.error.message })
+    }
 
-  } catch (err) {
+    let reply = data.output?.[0]?.content?.[0]?.text || "Tutor had trouble solving that."
 
-    console.error(err.response?.data || err.message);
+    reply += "\n\nDoes that make sense, or do you want me to explain any step?"
 
-    res.status(500).json({
-      error: err.response?.data || err.message
-    });
-
-  }
-});
-
-/* ---------- REALTIME SESSION (future voice tutor) ---------- */
-
-app.post("/session", async (req, res) => {
-  try {
-
-    const body = {
-      session: {
-        type: "realtime",
-        model: "gpt-realtime",
-        instructions: "You are MyVirtualTutor. Teach math step by step.",
-        audio: {
-          output: { voice: "marin" }
-        }
-      }
-    };
-
-    const response = await axios.post(
-      "https://api.openai.com/v1/realtime/client_secrets",
-      body,
-      {
-        headers: {
-          Authorization: "Bearer " + OPENAI_API_KEY,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    res.json(response.data);
+    res.json({ reply })
 
   } catch (err) {
-
-    console.error(err.response?.data || err.message);
-
-    res.status(500).json({
-      error: err.response?.data || err.message
-    });
-
+    console.error(err)
+    res.json({ reply: "Tutor had trouble solving that." })
   }
-});
+})
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Server listening on", PORT);
-});
+app.get("/", (req, res) => {
+  res.send("MyVirtualTutor backend running")
+})
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
