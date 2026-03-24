@@ -20,21 +20,27 @@ app.post("/chat", async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        input: `Solve this step by step and explain clearly:\n${userMessage}`
+        input: `Solve step-by-step:\n${userMessage}`
       })
     })
 
     const data = await response.json()
 
-    let reply = data.output?.[0]?.content?.[0]?.text || "Tutor had trouble solving that."
+    // 🔥 LOG ERROR CLEARLY
+    if (data.error) {
+      console.error("OPENAI ERROR:", data.error)
+      return res.json({ reply: "ERROR: " + data.error.message })
+    }
+
+    let reply = data.output?.[0]?.content?.[0]?.text || "No response"
 
     reply += "\n\nDoes that make sense, or do you want me to explain any step?"
 
     res.json({ reply })
 
   } catch (err) {
-    console.error(err)
-    res.json({ reply: "Tutor had trouble solving that." })
+    console.error("SERVER ERROR:", err)
+    res.json({ reply: "Server crashed." })
   }
 })
 
