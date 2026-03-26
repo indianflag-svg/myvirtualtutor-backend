@@ -8,13 +8,11 @@ app.use(express.json())
 const PORT = process.env.PORT || 8000
 
 app.post("/chat", async (req, res) => {
-  res.json({
-    reply: "TEST WORKING\n\nDoes that make sense, or do you want me to explain any step?"
-  })
+  res.json({ reply: "BACKEND VERSION 2 LIVE" })
 })
 
 app.get("/", (req, res) => {
-  res.send("MyVirtualTutor backend running")
+  res.send("BACKEND VERSION 2 ROOT")
 })
 
 app.listen(PORT, () => {
