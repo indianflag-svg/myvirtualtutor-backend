@@ -1,24 +1,29 @@
-const express = require("express")
-const cors = require("cors")
+const express = require("express");
+const cors = require("cors");
 
-const app = express()
-app.use(cors())
-app.use(express.json())
+const app = express();
 
-const PORT = process.env.PORT || 8000
-
-app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message
-
-  res.json({
-    reply: `Step 1: 12 goes into 144 twelve times.\nAnswer: 12\n\nDoes that make sense, or do you want me to explain any step?`
-  })
-})
+app.use(cors());
+app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Backend new working")
-})
+  res.send("Backend working");
+});
 
+app.post("/chat", (req, res) => {
+  const { message } = req.body;
+
+  let result;
+  try {
+    result = eval(message);
+  } catch {
+    result = "error";
+  }
+
+  res.json({ ok: true, reply: String(result) });
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log("Server listening on port " + PORT);
+});
