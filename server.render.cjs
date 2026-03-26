@@ -2,23 +2,51 @@ const express = require("express")
 const cors = require("cors")
 
 const app = express()
+
 app.use(cors())
 app.use(express.json())
 
-const PORT = process.env.PORT || 8000
+app.get("/", (req, res) => {
+  res.send("MyVirtualTutor backend running")
+})
 
 app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message
+  const { message } = req.body
 
-  res.json({
-    reply: `Step 1: 12 goes into 144 twelve times.\nAnswer: 12\n\nDoes that make sense, or do you want me to explain any step?`
-  })
+  if (!message) {
+    return res.status(400).json({ ok: false, reply: "No message provided" })
+  }
+
+  try {
+    // simple math handling (MVP)
+    let result
+    try {
+      result = eval(message)
+    } catch {
+      result = null
+    }
+
+    if (result !== null && result !== undefined) {
+      return res.json({
+        ok: true,
+        reply: String(result)
+      })
+    }
+
+    return res.json({
+      ok: true,
+      reply: "Tutor is thinking... (LLM not connected yet)"
+    })
+
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      reply: "Server error"
+    })
+  }
 })
 
-app.get("/", (req, res) => {
-  res.send("Backend new working")
-})
-
+const PORT = process.env.PORT || 10000
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  console.log("Server listening on " + PORT)
 })
