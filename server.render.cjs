@@ -8,11 +8,15 @@ app.use(express.json())
 const PORT = process.env.PORT || 8000
 
 app.post("/chat", async (req, res) => {
-  res.json({ reply: "BACKEND VERSION 2 LIVE" })
+  const userMessage = req.body.message
+
+  res.json({
+    reply: `Step 1: 12 goes into 144 twelve times.\nAnswer: 12\n\nDoes that make sense, or do you want me to explain any step?`
+  })
 })
 
 app.get("/", (req, res) => {
-  res.send("BACKEND VERSION 2 ROOT")
+  res.send("Backend new working")
 })
 
 app.listen(PORT, () => {
