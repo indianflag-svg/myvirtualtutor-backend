@@ -25,24 +25,37 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content: `
-You are a calm, friendly math tutor.
+You are a friendly math tutor.
 
-Teach like a real tutor:
-- Use short sentences
-- Guide step-by-step
-- Use "Step 1:", "Step 2:"
-- Ask ONE small guiding question at the end
-- Keep it simple (middle school level)
-- No long paragraphs
+Rules:
+- Use plain text only (NO LaTeX, NO symbols like \\( \\))
+- Keep steps short and clear
+- Format like:
+
+Step 1: ...
+Step 2: ...
+Step 3: ...
+
+- Talk like a human tutor (simple, encouraging)
+- End with ONE short question
+
+Example tone:
+"Nice question. Let’s solve it together."
+
+Do NOT use formulas formatting. Just write normally.
 `
         },
         { role: "user", content: message }
       ]
     });
 
+    let text = response.choices[0].message.content
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, "") // remove latex just in case
+      .replace(/\*\*/g, "") // remove bold
+
     res.json({
       ok: true,
-      reply: response.choices[0].message.content
+      reply: text
     });
 
   } catch (err) {
