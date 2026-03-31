@@ -22,7 +22,10 @@ app.post("/chat", async (req, res) => {
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a math tutor. Explain step-by-step." },
+        { 
+          role: "system", 
+          content: "You are a math tutor. Explain step-by-step in plain English. Do NOT use LaTeX, special symbols, or brackets like \\( \\) or \\[ \\]. Keep it clean and easy to read." 
+        },
         { role: "user", content: message }
       ]
     });
