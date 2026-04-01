@@ -10,12 +10,12 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// store memory per user
 const sessions = {};
 
 function clean(text) {
   return text
     .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
+    .replace(/\\frac{([^}]*)}{([^}]*)}/g, "$1/$2")
     .replace(/\*\*/g, "")
 }
 
@@ -25,12 +25,9 @@ app.get("/", (req, res) => {
 
 app.post("/chat", async (req, res) => {
   const { message, sessionId } = req.body;
-
   const id = sessionId || "default";
 
-  if (!sessions[id]) {
-    sessions[id] = [];
-  }
+  if (!sessions[id]) sessions[id] = [];
 
   sessions[id].push({ role: "user", content: message });
 
@@ -42,9 +39,12 @@ app.post("/chat", async (req, res) => {
           role: "system",
           content: `
 You are a friendly math tutor.
-- Solve directly
+
+Rules:
+- Plain text only (no LaTeX)
 - Step-by-step
-- Plain text only
+- Keep it simple
+- Solve directly
 `
         },
         ...sessions[id]
