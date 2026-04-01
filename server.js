@@ -10,8 +10,13 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// simple in-memory history
 let history = [];
+
+function clean(text) {
+  return text
+    .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
+    .replace(/\*\*/g, "")
+}
 
 app.get("/", (req, res) => {
   res.send("Backend working");
@@ -28,13 +33,21 @@ app.post("/chat", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a math tutor. Teach step-by-step. Remember previous messages."
+          content: `
+You are a friendly math tutor.
+
+Rules:
+- Always solve directly
+- Use Step 1, Step 2 format
+- Plain text only (no LaTeX)
+- Keep it short and clear
+`
         },
         ...history
       ]
     });
 
-    const reply = response.choices[0].message.content;
+    let reply = clean(response.choices[0].message.content);
 
     history.push({ role: "assistant", content: reply });
 
