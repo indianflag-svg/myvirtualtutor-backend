@@ -10,7 +10,8 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-let history = [];
+// store memory per user
+const sessions = {};
 
 function clean(text) {
   return text
@@ -23,9 +24,15 @@ app.get("/", (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
-  const { message } = req.body;
+  const { message, sessionId } = req.body;
 
-  history.push({ role: "user", content: message });
+  const id = sessionId || "default";
+
+  if (!sessions[id]) {
+    sessions[id] = [];
+  }
+
+  sessions[id].push({ role: "user", content: message });
 
   try {
     const response = await client.chat.completions.create({
@@ -35,21 +42,18 @@ app.post("/chat", async (req, res) => {
           role: "system",
           content: `
 You are a friendly math tutor.
-
-Rules:
-- Always solve directly
-- Use Step 1, Step 2 format
-- Plain text only (no LaTeX)
-- Keep it short and clear
+- Solve directly
+- Step-by-step
+- Plain text only
 `
         },
-        ...history
+        ...sessions[id]
       ]
     });
 
     let reply = clean(response.choices[0].message.content);
 
-    history.push({ role: "assistant", content: reply });
+    sessions[id].push({ role: "assistant", content: reply });
 
     res.json({ ok: true, reply });
 
