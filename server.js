@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
+const multer = require("multer");
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
 app.use(cors());
@@ -23,13 +26,21 @@ app.get("/", (req, res) => {
   res.send("Backend working");
 });
 
-app.post("/chat", async (req, res) => {
-  const { message, sessionId } = req.body;
-  const id = sessionId || "default";
+app.post("/chat", upload.single("file"), async (req, res) => {
+  const message = req.body.message || "";
+  const sessionId = req.body.sessionId || "default";
 
-  if (!sessions[id]) sessions[id] = [];
+  let inputText = message;
 
-  sessions[id].push({ role: "user", content: message });
+  // If file uploaded → extract basic text
+  if (req.file) {
+    const fileText = req.file.buffer.toString("utf-8");
+    inputText += "\n" + fileText;
+  }
+
+  if (!sessions[sessionId]) sessions[sessionId] = [];
+
+  sessions[sessionId].push({ role: "user", content: inputText });
 
   try {
     const response = await client.chat.completions.create({
@@ -38,28 +49,21 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content: `
-You are a friendly, patient math tutor.
+You are a friendly math tutor.
 
-Style:
-- Talk like a human tutor (natural, not robotic)
-- Say things like "Let’s solve this together"
-- Use Step 1, Step 2 format
-- Keep sentences short
-- Encourage the student slightly
-
-Rules:
+- Solve step-by-step
+- Be interactive
 - Plain text only
-- No LaTeX
-- Solve directly
+- If input is messy (from file), extract the math problem first
 `
         },
-        ...sessions[id]
+        ...sessions[sessionId]
       ]
     });
 
     let reply = clean(response.choices[0].message.content);
 
-    sessions[id].push({ role: "assistant", content: reply });
+    sessions[sessionId].push({ role: "assistant", content: reply });
 
     res.json({ ok: true, reply });
 
