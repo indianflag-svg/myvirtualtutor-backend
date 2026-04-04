@@ -20,6 +20,8 @@ function clean(text) {
     .replace(/\\\(|\\\)|\\\[|\\\]/g, "")
     .replace(/\\frac{([^}]*)}{([^}]*)}/g, "$1/$2")
     .replace(/\*\*/g, "")
+    .replace(/###/g, "")
+    .replace(/\n\s*\n/g, "\n") // remove blank lines
 }
 
 app.get("/", (req, res) => {
@@ -32,7 +34,6 @@ app.post("/chat", upload.single("file"), async (req, res) => {
 
   let inputText = message;
 
-  // If file uploaded → extract basic text
   if (req.file) {
     const fileText = req.file.buffer.toString("utf-8");
     inputText += "\n" + fileText;
@@ -51,10 +52,12 @@ app.post("/chat", upload.single("file"), async (req, res) => {
           content: `
 You are a friendly math tutor.
 
+Rules:
 - Solve step-by-step
-- Be interactive
+- Use: Step 1, Step 2 (no markdown)
 - Plain text only
-- If input is messy (from file), extract the math problem first
+- Keep it clean and simple
+- If input is messy, extract the problem first
 `
         },
         ...sessions[sessionId]
