@@ -5,6 +5,13 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+// 🔒 MATH DETECTION
+function isMathQuestion(input) {
+  const mathPattern = /^[0-9xX+\-*/().\s/÷×=]+$/
+  return mathPattern.test(input)
+}
+
+// 🧠 SOLVER
 function solveMath(problem) {
   try {
     if (problem.includes("/") && problem.includes("+")) {
@@ -34,7 +41,7 @@ Step 4: Final answer
 
     const result = eval(problem)
     return `${problem} = ${result}`
-    
+
   } catch {
     return "Sorry, I couldn’t solve that."
   }
@@ -42,6 +49,14 @@ Step 4: Final answer
 
 app.post("/chat", (req, res) => {
   const { message } = req.body
+
+  // 🔒 BLOCK NON-MATH
+  if (!isMathQuestion(message)) {
+    return res.json({
+      reply: "I’m a math tutor 😊 Please ask a math problem like 2x + 6 = 10 or 1/2 + 3/4."
+    })
+  }
+
   const reply = solveMath(message)
   res.json({ reply })
 })
