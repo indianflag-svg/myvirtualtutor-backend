@@ -5,10 +5,8 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-// 🧠 SIMPLE STEP-BY-STEP SOLVER
 function solveMath(problem) {
   try {
-    // FRACTIONS ADDITION (basic handling)
     if (problem.includes("/") && problem.includes("+")) {
       const [a, b] = problem.split("+").map(s => s.trim())
 
@@ -34,22 +32,17 @@ Step 4: Final answer
 = ${(resultNum / commonDen).toFixed(2)}`
     }
 
-    // DEFAULT (fallback)
     const result = eval(problem)
-    return `Step 1: Solve the expression
-
-${problem} = ${result}`
+    return `${problem} = ${result}`
     
   } catch {
-    return "Sorry, I couldn’t solve that. Try another problem."
+    return "Sorry, I couldn’t solve that."
   }
 }
 
 app.post("/chat", (req, res) => {
   const { message } = req.body
-
   const reply = solveMath(message)
-
   res.json({ reply })
 })
 
@@ -57,6 +50,8 @@ app.get("/", (req, res) => {
   res.send("Backend running")
 })
 
-app.listen(10000, () => {
-  console.log("Server listening on 10000")
+const PORT = process.env.PORT || 10000
+
+app.listen(PORT, () => {
+  console.log(`Server listening on ${PORT}`)
 })
